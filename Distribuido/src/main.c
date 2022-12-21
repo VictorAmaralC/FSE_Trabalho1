@@ -45,6 +45,7 @@ pthread_t thread2;
 int socket, connfd;
 
 // Chamada de funcoes
+void configuraPino();
 void ativaPresenca(void);
 void ativaFumaca(void);
 void ativaJanela(void);
@@ -84,25 +85,8 @@ int int main(int argc, char const *argv[]) {
 
     fclose(arquivoSala);
 
-    pinMode(Lampada1,       OUTPUT);
-    pinMode(Lampada2,       OUTPUT);
-    pinMode(ArCondicionado, OUTPUT);
-    pinMode(Projetor,       OUTPUT);
-    pinMode(Alarme,         OUTPUT);
-    pinMode(Presenca,       INPUT);
-    pinMode(Fumaca,         INPUT);
-    pinMode(Porta,          INPUT);
-    pinMode(Janela,         INPUT);
-    pinMode(Entrada,        INPUT);
-    pinMode(Saida,          INPUT);
-
-    wiringPiISR(Presenca, INT_EDGE_RISING, &ativaPresenca);
-    wiringPiISR(Fumaca,   INT_EDGE_RISING, &ativaFumaca);
-    wiringPiISR(Porta,    INT_EDGE_RISING, &ativaPorta);
-    wiringPiISR(Janela,   INT_EDGE_RISING, &ativaJanela);
-    wiringPiISR(Entrada,  INT_EDGE_RISING, &ativaEntrada);
-    wiringPiISR(Saida,    INT_EDGE_RISING, &ativaSaida);
-
+    configuraPino();
+    
     //Loop checagem de presença para desligar luzes gerais
     while(1){
         long checagem = millis();
@@ -120,20 +104,95 @@ int int main(int argc, char const *argv[]) {
     return 0;
 }
 
+void configuraPino(){
+    pinMode(Lampada1,       OUTPUT);
+    pinMode(Lampada2,       OUTPUT);
+    pinMode(ArCondicionado, OUTPUT);
+    pinMode(Projetor,       OUTPUT);
+    pinMode(Alarme,         OUTPUT);
+    pinMode(Presenca,       INPUT);
+    pinMode(Fumaca,         INPUT);
+    pinMode(Porta,          INPUT);
+    pinMode(Janela,         INPUT);
+    pinMode(Entrada,        INPUT);
+    pinMode(Saida,          INPUT);
+
+    pullUpDnControl(Lampada1,       PUD_UP);
+    pullUpDnControl(Lampada2,       PUD_UP);
+    pullUpDnControl(ArCondicionado, PUD_UP);
+    pullUpDnControl(Alarme,         PUD_UP);
+    pullUpDnControl(Presenca,       PUD_UP);
+    pullUpDnControl(Fumaca,         PUD_UP);
+    pullUpDnControl(Porta,          PUD_UP);
+    pullUpDnControl(Janela,         PUD_UP);
+    pullUpDnControl(Entrada,        PUD_UP);
+    pullUpDnControl(Saida,          PUD_UP);
+
+    wiringPiISR(Presenca, INT_EDGE_RISING, &ativaPresenca);
+    wiringPiISR(Fumaca,   INT_EDGE_RISING, &ativaFumaca);
+    wiringPiISR(Porta,    INT_EDGE_RISING, &ativaPorta);
+    wiringPiISR(Janela,   INT_EDGE_RISING, &ativaJanela);
+    wiringPiISR(Entrada,  INT_EDGE_RISING, &ativaEntrada);
+    wiringPiISR(Saida,    INT_EDGE_RISING, &ativaSaida);
+
+}
+
 void ativaPresenca(void) {
-    mensagemAlerta(Presenca);
+    aviso = "Sensor de presenca ativado!\n";
+
+    if(alarmeTocando == true){
+        if(digitalRead(Alarme) == 0)
+            digitalWrite(Alarme, 1);
+        
+        aviso += " Alarme ativado!";
+    } else if (alarmeTocando == false){
+        digitalWrite(Lampada1, 1);
+        digitalWrite(Lampada2, 1);
+        
+        tempoPresenca = millis();
+        luzesGerais = true;
+        aviso += " Luzes acesas!";
+    }
+
+    enviaAvisoCentral(aviso);
 }
 
 void ativaFumaca(void) {
-    mensagemAlerta(Fumaca);
+    if(digitalRead(Fumaca) == false){
+        aviso = "Sensor de fumaca ativado!\n";
+        digitalWrite(Fumaca, 1);
+            
+        alarmeTocando = true;
+        if(digitalRead(Alarme) == 0)
+            digitalWrite(Alarme, 1);
+    } else {
+        aviso = "Sensor de fumaca desativado!\n";
+        digitalWrite(Fumaca, 1);
+    }
+    enviaAvisoCentral(aviso);
 }
 
 void ativaJanela(void) {
-    mensagemAlerta(Janela);
+    if(digitalRead(Janela) == false){
+        digitalWrite(Janela, 1);
+        aviso = "Sensor de janela ativado!\n";
+    } else {
+        digitalWrite(Janela, 0);
+        aviso = "Sensor de janela desativado!\n";
+    } 
+    enviaAvisoCentral(aviso);
 }
 
 void ativaPorta(void) {
-    mensagemAlerta(Porta);
+    if(digitalRead(Porta) == false){
+        digitalWrite(Porta, 1);
+        aviso = "Sensor de porta ativado!\n";
+    } else {
+        digitalWrite(Porta, 0);
+        aviso = "Sensor de porta desativado!\n";
+    }
+
+    enviaAvisoCentral(aviso);
 }
 
 void ativaEntrada(void) {
@@ -157,50 +216,8 @@ void ativaSaida(void) {
 }
 
 void enviaAvisoCentral(char *aviso){
-    write(sockfd, aviso, sizeof(aviso));
+    write(socket, aviso, sizeof(aviso));
     bzero(aviso, sizeof(aviso));
-}
-
-void mensagemAlerta(int sensor){
-    switch(sensor) {
-      case Presenca :
-        aviso = "Sensor de presenca ativado!\n";
-
-        if(alarmeTocando == true){
-            if(digitalRead(Alarme) == 0)
-                digitalWrite(Alarme, 1);
-            aviso += " Alarme ativado!";
-        } else if (alarmeTocando == false){
-            digitalWrite(Lampada1, 1);
-            digitalWrite(Lampada2, 1);
-            tempoPresenca = millis();
-            luzesGerais = true;
-            aviso += " Luzes acesas!";
-        }
-
-        enviaAvisoCentral(aviso);
-        break;
-      case Fumaca :
-        alarmeTocando = true;
-        
-        if(digitalRead(Alarme) == 0)
-            digitalWrite(Alarme, 1);
-        
-        aviso = "Sensor de fumaca ativado!\n";
-        enviaAvisoCentral(aviso);
-        break;
-      case Janela :
-        aviso = "Sensor de janela ativado!\n";
-        enviaAvisoCentral(aviso);
-        break;
-      case Porta :
-        aviso = "Sensor de porta ativado!\n";
-        enviaAvisoCentral(aviso);
-        break;
-      default :
-        aviso = "Nenhum sensor ativado...\n";
-        enviaAvisoCentral(aviso);
-   }
 }
 
 void atualizaTotalPessoas(int alteracaoMovimento){
@@ -210,15 +227,6 @@ void atualizaTotalPessoas(int alteracaoMovimento){
     } else if(alteracaoMovimento == Saida){
         rcontadorSala.pessoa--;
         contadorSala.total--;
-    }
-}
-
-void alteraEstadoSensor(int pino){
-    if (digitalRead(pino) == 1){
-        digitalWrite(pino, 0);
-    }
-    else{
-        digitalWrite(pino, 1);
     }
 }
 
