@@ -56,5 +56,5 @@ Assim, executando na RASP 43 ou na RASP 44, os 4 cruzamentos serão executados.
 Acionando os sensores e botões através da plataforma online.
 
 ## Referências
-[repositório semestres anteriores - Autor: Juniopereira](https://github.com/juniopereirab/FSE-Trabalho1)
-[socket](https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/)
+- [repositório semestres anteriores - Autor: Juniopereira](https://github.com/juniopereirab/FSE-Trabalho1)
+- [socket](https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/)
